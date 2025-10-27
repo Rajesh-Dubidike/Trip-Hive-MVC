@@ -1,9 +1,14 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const Listing = require("./models/listing.js");
+const Review = require("./models/review.js");
 const path = require("path");
 const methodOverride = require("method-override");
 const ejsMate = require("ejs-mate");
+const wrapAsync = require("./utils/wrapAsync.js");
+const ExpressError = require("./utils/ExpressError.js");
+const { reviewSchema } = require("./schema.js");
+const listings = require("./routes/listing.js");
 
 const app = express();
 app.set("view engine", "ejs");
@@ -11,13 +16,9 @@ app.set("views", path.join(__dirname, "views"));
 app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride("_method"));
 app.engine("ejs", ejsMate);
+app.use(express.static(path.join(__dirname, "/public"))); // configuring Express.js to serve static files from the /public directory.
 
 const MONGO_URL = "mongodb://127.0.0.1:27017/ExploreLust";
-
-/* Server setup */
-app.listen(8080, () => {
-    console.log("Server is running on localhost: 8080");
-});
 
 /* Database connectivity setup */
 main()
@@ -30,57 +31,62 @@ async function main() {
     await mongoose.connect(MONGO_URL);
 }
 
+const validateReview = (req, res, next) => {
+    let { error } = reviewSchema.validate(req.body);
+    if (error) {
+        throw new ExpressError(400, error.message);
+    } else {
+        next();
+    }
+};
+
 /* All Routes */
 // home route
 app.get("/", (req, res) => {
     res.send("Home route of project ExploreLust is working.");
 });
 
-// Index Route: /listings - To see all titles.
-app.get("/listings", async (req, res) => {
-    const allListings = await Listing.find({}); //To extract all listing data from database.
-    res.render("./listings/index.ejs", { listings: allListings }); //Passing all listings to index.ejs with key name as `listings`.
-});
+// Express Routers
+app.use("/listings", listings);
 
-// New Form Route: /listings/new - To create a new listing.
-app.get("/listings/new", (req, res) => {
-    res.render("./listings/new.ejs");
-});
+// Add Review Route: /listings/:id/reviews - To add review in respective listing.
+app.post(
+    "/listings/:id/reviews",
+    validateReview,
+    wrapAsync(async (req, res) => {
+        let listing = await Listing.findById(req.params.id);
+        let newReview = new Review(req.body.review);
 
-// Show Route: /listings/:id - To see a single list.
-app.get("/listings/:id", async (req, res) => {
-    const { id } = req.params;
-    const listing = await Listing.findById(id);
-    res.render("./listings/show.ejs", { listing });
-});
+        listing.reviews.push(newReview);
 
-// Create Route: /listings/new - To create a new listing in DB.
-app.post("/listings/new", async (req, res) => {
-    // let { title, description, price, location, country } = req.body; // This is the old way of getting form data.
-    /* This is the new way of getting form data.
-    Here we are taking data from `req.body.listing` object and passing it to Listing model and saving it to DB. */
-    await new Listing(req.body.listing).save();
-    res.redirect("/listings");
-});
+        await newReview.save();
+        await listing.save();
 
-// New form Route: /listings/:id/edit - To edit listing.
-app.get("/listings/:id/edit", async (req, res) => {
-    const { id } = req.params;
-    const listing = await Listing.findById(id);
-    res.render("./listings/edit.ejs", { listing });
-});
+        res.redirect(`/listings/${listing._id}`);
+    }),
+);
 
-// Update Route: /listings/:id/edit - To update data in DB.
-app.put("/listings/:id", async (req, res) => {
-    const { id } = req.params;
-    await Listing.findByIdAndUpdate(id, { ...req.body.listing });
+// Delete Review Route: /listings/:id/reviews/:reviewsId
+app.delete("/listings/:id/reviews/:reviewId", wrapAsync(async (req, res) => {
+    let { id, reviewId } = req.params;
+
+    await Listing.findByIdAndUpdate(id, { $pull: { reviews: reviewId } });
+    await Review.findByIdAndDelete(reviewId);
+
     res.redirect(`/listings/${id}`);
+}));
+
+// Middlewares
+app.all("*", (req, res, next) => {
+    next(new ExpressError(404, "Page Not Found!"));
 });
 
-// Delete Route: /listings/:id/delete - To delete listing from DB.
-app.delete("/listings/:id/delete", async (req, res) => {
-    const { id } = req.params;
-    let deleted = await Listing.findByIdAndDelete(id);
-    console.log(deleted);
-    res.redirect(`/listings`);
+app.use((err, req, res, next) => {
+    let { statusCode = 500, message = "Something Went Wrong!" } = err;
+    res.status(statusCode).render("error.ejs", { message });
+});
+
+/* Server setup */
+app.listen(8080, () => {
+    console.log("Server is running on localhost: 8080");
 });
