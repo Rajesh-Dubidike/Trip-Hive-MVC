@@ -5,6 +5,7 @@ const methodOverride = require("method-override");
 const ejsMate = require("ejs-mate");
 const ExpressError = require("./utils/ExpressError.js");
 const session = require("express-session");
+const flash = require("connect-flash");
 
 // Requiring Express Router files.
 const listings = require("./routes/listing.js");
@@ -26,20 +27,22 @@ const sessionOptions = {
     secret: "Session Secret",
     resave: false,
     saveUninitialized: true,
+    cookie: {
+        expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+        maxAge: Date.now() + 7 * 24 * 60 * 60 * 1000,
+        httpOnly: true,
+    },
 };
 
 app.use(session(sessionOptions));
+app.use(flash());
 
-/* Database connectivity setup */
-main()
-    .then(() => {
-        console.log("Database connected.");
-    })
-    .catch((err) => console.log(err));
-
-async function main() {
-    await mongoose.connect(MONGO_URL);
-}
+// Flsh Message Middleware.
+app.use((req, res, next) => {
+    res.locals.success = req.flash("success");
+    res.locals.error = req.flash("error");
+    next();
+});
 
 // Home Route
 app.get("/", (req, res) => {
@@ -59,6 +62,14 @@ app.use((err, req, res, next) => {
     let { statusCode = 500, message = "Something Went Wrong!" } = err;
     res.status(statusCode).render("error.ejs", { message });
 });
+
+/* Database connectivity setup */
+async function main() {
+    await mongoose.connect(MONGO_URL);
+    console.log("Database connected.");
+}
+
+main().catch((err) => console.log(err));
 
 /* Server setup */
 app.listen(8080, () => {
