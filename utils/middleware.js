@@ -1,4 +1,5 @@
-// Middleware to check wheather User logged in or not.
+const Listing = require("../models/listing.js");
+
 module.exports.isLoggedIn = (req, res, next) => {
     if (!req.isAuthenticated()) {
         req.session.redirectUrl = req.originalUrl; // Storing original URL in the session cookies to redirect back to it later.
@@ -13,4 +14,14 @@ module.exports.saveRedirectUrl = (req, res, next) => {
     if (req.session.redirectUrl) res.locals.redirectUrl = req.session.redirectUrl;
     next();
 };
-2
+
+// Middleware to check current User is owner of current Listing or not.
+module.exports.isOwner = async (req, res, next) => {
+    const { id } = req.params;
+    let listing = await Listing.findById(id);
+    if (!listing.owner.equals(res.locals.currentUser._id)) {
+        req.flash("error", "You are not authorized to make changes.");
+        return res.redirect(`/listings/${id}`);
+    }
+    next();
+};
