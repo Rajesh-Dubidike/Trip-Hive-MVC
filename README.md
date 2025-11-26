@@ -301,35 +301,3 @@ flowchart TD
 
 
 
-## Getting Started
-
-1. **Clone Repository**
-   ```bash
-   git clone <repository-url>
-   cd booking-system
-   ```
-
-2. **Install Dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Environment Setup**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-4. **Start Development Server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Run Tests**
-   ```bash
-   npm test
-   ```
-
----
-
-
