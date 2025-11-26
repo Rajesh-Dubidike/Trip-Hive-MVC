@@ -12,6 +12,7 @@
                     action="/listings/<%= listing._id %>?_method=PUT"
                     method="post"
                     class="needs-validation"
+                    enctype="multipart/form-data"
                     novalidate>
                     <!-- Inside the `name` we have created the key of object to names, so we can access it as object in `req.body`. -->
                     <div class="mb-4">
@@ -37,16 +38,14 @@
                         <div class="invalid-feedback">Enter short description!</div>
                     </div>
 
-                    <div class="mb-4">
-                        <label for="image" class="form-label fw-bold">Image Link/URL</label>
-                        <input
-                            type="text"
-                            name="listing[image]"
-                            id="image"
-                            value="<%= listing.image %>"
-                            class="form-control border border-2 border-secondary-subtle"
-                            required />
-                        <div class="invalid-feedback">Please enter valid link for image!</div>
+                    <div class="col-10 offset-1 mb-4">
+                        <label class="form-label fw-bold">Current Image</label>
+                        <img src="<%= previewImage %>" class="card-img-top object-fit-cover show-img" alt="Listing Image" />
+                    </div>
+
+                    <div class="col-10 offset-1 mb-4">
+                        <label for="image" class="form-label fw-bold">Upload New Image</label>
+                        <input type="file" name="listing[image]" id="image" class="form-control border border-2 border-secondary-subtle" />
                     </div>
 
                     <div class="row">
